@@ -18,20 +18,20 @@ There are two modes:
 
 ### 1. Timestamp mode
 
-Takes the current system time (as a Unix timestamp in seconds) and increments the value by 1 so that every file has a unique name.
+Takes the current system time (as a Unix timestamp in milliseconds) and increments the value by 1 so that every file has a unique name.
 
 **Example**
 ```
 CurrentDir
-|-> 1584193977
-|-> 1584193978
-|-> 1584193979
+|-> 1584802593285
+|-> 1584802593286
+|-> 1584802593287
 |-> ChildDir1
-    |-> 1584193980
-    |-> 1584193981
+    |-> 1584802593288
+    |-> 1584802593289
 |-> ChildDir2
-    |-> 1584193982
-    |-> 1584193983
+    |-> 1584802593290
+    |-> 1584802593291
 ```
 
 ### 2. Sequential mode

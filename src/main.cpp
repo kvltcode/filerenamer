@@ -1,8 +1,8 @@
-#include "../lib/alphanum.hpp"
+#include "alphanum.hpp"
 #include <iostream>
 #include <string>
 #include <filesystem>
-#include <time.h>
+#include <chrono>
 #include <vector>
 #include <algorithm>
 
@@ -13,19 +13,19 @@ enum class MODE
 	EXIT
 };
 
-void timestampRename(const std::string& fileLocation, uint32_t& count);
-void sequentialRename(const std::string& fileLocation, uint32_t& count);
-void renameFile(const std::filesystem::path& p, int value);
+void timestampRename(const std::string& fileLocation, uint64_t& count);
+void sequentialRename(const std::string& fileLocation, uint64_t& count);
+void renameFile(const std::filesystem::path& p, uint64_t value);
 void getListAndSort(const std::string& fileLocation, std::vector<std::filesystem::path>& paths);
 void printIntro();
-void printOutro(uint32_t& count);
+void printOutro(uint64_t& count);
 MODE getSelection(const std::string& fileLocation);
 
 int main(int argc, char** argv)
 {
 	printIntro();
 
-	uint32_t count = 0;
+	uint64_t count = 0;
 
 	std::string fileLocation = std::filesystem::current_path().string();
 
@@ -67,31 +67,31 @@ int main(int argc, char** argv)
 	return 0;
 }
 
-void timestampRename(const std::string& fileLocation, uint32_t& count)
+void timestampRename(const std::string& fileLocation, uint64_t& count)
 {
 	std::vector<std::filesystem::path> paths;
 
 	getListAndSort(fileLocation, paths);
 
-	auto timeSeed = time(0);
+	uint64_t timeSeed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
 	for (auto& path : paths)
 	{
 		if (path.has_extension())
 		{
-			renameFile(path, static_cast<int>(timeSeed + count));
+			renameFile(path, timeSeed + count);
 			++count;
 		}
 	}
 }
 
-void sequentialRename(const std::string& fileLocation, uint32_t& count)
+void sequentialRename(const std::string& fileLocation, uint64_t& count)
 {
 	std::vector<std::filesystem::path> paths;
 
 	getListAndSort(fileLocation, paths);
 
-	uint32_t increment = 0;
+	uint64_t increment = 0;
 
 	std::string previousPath = "";
 	for (auto& path : paths)
@@ -110,7 +110,7 @@ void sequentialRename(const std::string& fileLocation, uint32_t& count)
 	}
 }
 
-void renameFile(const std::filesystem::path& p, int value)
+void renameFile(const std::filesystem::path& p, uint64_t value)
 {
 	std::string newName = p.parent_path().string() + "\\" + std::to_string(value) + p.extension().string();
 	std::filesystem::rename(p, newName);
@@ -151,7 +151,7 @@ void printIntro()
 	std::cout << "////////////////////////////////////////////////////////////////\n\n";
 }
 
-void printOutro(uint32_t& count)
+void printOutro(uint64_t& count)
 {
 	std::cout << "/////////////////////////////////////////////\n";
 	std::cout << "// Renaming complete. " << count << " files renamed\n";
