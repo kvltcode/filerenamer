@@ -1,3 +1,7 @@
+// This is an independent project of an individual developer. Dear PVS-Studio, please check it.
+
+// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
+
 #include "alphanum.hpp"
 #include <iostream>
 #include <string>
@@ -13,27 +17,27 @@ enum class MODE
 	EXIT
 };
 
-void timestampRename(const std::string& fileLocation, uint64_t& count);
-void sequentialRename(const std::string& fileLocation, uint64_t& count);
-void renameFile(const std::filesystem::path& p, uint64_t value);
-void getListAndSort(const std::string& fileLocation, std::vector<std::filesystem::path>& paths);
+uint64_t timestampRename(const std::string& fileLocation);
+uint64_t sequentialRename(const std::string& fileLocation);
+bool renameFile(const std::filesystem::path& p, uint64_t value);
+std::vector<std::filesystem::path> getListAndSort(const std::string& fileLocation);
 void printIntro();
-void printOutro(uint64_t& count);
+void printOutro(const uint64_t& updateCount);
 MODE getSelection(const std::string& fileLocation);
 
 int main(int argc, char** argv)
 {
 	printIntro();
 
-	uint64_t count = 0;
+	uint64_t updateCount { 0 }; //counts the total number of files renamed
 
-	std::string fileLocation = std::filesystem::current_path().string();
-
-	MODE selection = MODE::EXIT;
+	std::string fileLocation { std::filesystem::current_path().string() };
+	
+	MODE selection { MODE::EXIT };
 
 	if (argc == 2)
 	{
-		std::string argValue = argv[1];
+		std::string argValue { argv[1] };
 		
 		if (argValue == "-1")
 		{
@@ -53,25 +57,26 @@ int main(int argc, char** argv)
 	switch (selection)
 	{
 		case MODE::TIMESTAMP:
-			timestampRename(fileLocation, count);
-		break;
+			updateCount = timestampRename(fileLocation);
+			break;
 		case MODE::SEQUENTIAL:
-			sequentialRename(fileLocation, count);
-		break;
+			updateCount = sequentialRename(fileLocation);
+			break;
 		default:
-			return 1;	
+			return 1;
+			break;
 	}
 
-	printOutro(count);
+	printOutro(updateCount);
 
 	return 0;
 }
 
-void timestampRename(const std::string& fileLocation, uint64_t& count)
+//takes the current system time and uses this as a starting point to increment the filename
+uint64_t timestampRename(const std::string& fileLocation)
 {
-	std::vector<std::filesystem::path> paths;
-
-	getListAndSort(fileLocation, paths);
+	uint64_t updateCount { 0 };
+	std::vector<std::filesystem::path> paths { getListAndSort(fileLocation) };
 
 	uint64_t timeSeed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
@@ -79,21 +84,30 @@ void timestampRename(const std::string& fileLocation, uint64_t& count)
 	{
 		if (path.has_extension())
 		{
-			renameFile(path, timeSeed + count);
-			++count;
+			if(renameFile(path, timeSeed + updateCount))
+			{
+				++updateCount;
+			}
 		}
 	}
+
+	return updateCount;
 }
 
-void sequentialRename(const std::string& fileLocation, uint64_t& count)
+//renames the files from 1 - X
+//if the new file name has the same name as an existing file, it will not updated it
+//to help prevent this, this function calls timestampRename first and give everything a new name
+uint64_t sequentialRename(const std::string& fileLocation)
 {
-	std::vector<std::filesystem::path> paths;
+	timestampRename(fileLocation);
+	uint64_t updateCount { 0 };
 
-	getListAndSort(fileLocation, paths);
+	std::vector<std::filesystem::path> paths { getListAndSort(fileLocation) };
 
-	uint64_t increment = 0;
+	uint64_t increment { 0 };
 
-	std::string previousPath = "";
+	std::string previousPath {};
+
 	for (auto& path : paths)
 	{
 		if (path.has_extension())
@@ -103,30 +117,55 @@ void sequentialRename(const std::string& fileLocation, uint64_t& count)
 				increment = 1;
 				previousPath = path.parent_path().string();
 			}
-			renameFile(path, increment);
-			++count;
+			
+			if(renameFile(path, increment))
+			{
+				++updateCount;				
+			}
 			++increment;
 		}
 	}
+
+	return updateCount;
 }
 
-void renameFile(const std::filesystem::path& p, uint64_t value)
+//doesn't rename the file if the name already exists
+bool renameFile(const std::filesystem::path& p, uint64_t value)
 {
-	std::string newName = p.parent_path().string() + "\\" + std::to_string(value) + p.extension().string();
-	std::filesystem::rename(p, newName);
+	bool returnValue { false };
 
-	std::string origName = p.string();
-	size_t position = 0;
-	while ((position = origName.find("\\\\") != std::string::npos))
+	std::string newName { p.parent_path().string() + "\\" + std::to_string(value) + p.extension().string() };
+
+	if(!std::filesystem::exists(newName))
+	{
+		std::filesystem::rename(p, newName);
+		returnValue = true;
+	}
+	else
+	{
+		std::cout << "Failed to rename: " << p << " to " << newName << " . File name already exists\n";
+		return returnValue;
+	}
+
+	std::string origName { p.string() };
+	size_t position { origName.find("\\\\") };
+	
+	while (position != std::string::npos)
 	{
 		origName.replace(position, 1, "\\");
 	}
 
 	std::cout << "Renamed: " << origName << "\nTo     : " << newName << "\n\n";
+
+	return returnValue;
 }
 
-void getListAndSort(const std::string& fileLocation, std::vector<std::filesystem::path>& paths)
+//returns a sorted vector of all file within the supplied location
+//sort is based on alpha numeric
+std::vector<std::filesystem::path> getListAndSort(const std::string& fileLocation)
 {
+	std::vector<std::filesystem::path> paths;
+
 	for (auto& path : std::filesystem::recursive_directory_iterator(fileLocation))
 	{
 		if (path.path().has_extension())
@@ -136,6 +175,8 @@ void getListAndSort(const std::string& fileLocation, std::vector<std::filesystem
 	}
 
 	std::sort(paths.begin(), paths.end(), doj::alphanum_less<std::filesystem::path>());
+
+	return paths;
 }
 
 void printIntro()
@@ -151,14 +192,15 @@ void printIntro()
 	std::cout << "////////////////////////////////////////////////////////////////\n\n";
 }
 
-void printOutro(uint64_t& count)
+void printOutro(const uint64_t& updateCount)
 {
 	std::cout << "/////////////////////////////////////////////\n";
-	std::cout << "// Renaming complete. " << count << " files renamed\n";
+	std::cout << "// Renaming complete. " << updateCount << " files renamed\n";
 	std::cout << "// Press any key to exit \n";
 	std::cout << "/////////////////////////////////////////////\n\n";
 }
 
+//user interface for mode selection
 MODE getSelection(const std::string& fileLocation)
 {
 	std::string selection;

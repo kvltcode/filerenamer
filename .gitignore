@@ -38,3 +38,6 @@
 *.sln
 *.vcxproj
 *.vcxproj.user
+
+# VSCode
+*.vscode
