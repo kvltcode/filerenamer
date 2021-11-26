@@ -1,7 +1,8 @@
 workspace "filerenamer"
     architecture "x64"
     startproject "filerenamer"
-
+    location "build"
+    
     configurations
     {
         "Debug",
